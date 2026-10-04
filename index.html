@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f7f1e8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="내 레시피를 적어 두고 단계마다 타이머를 눌러 따라 하는 부엌 노트.">
+<title>부엌 노트</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f1e8; --card:#fffdf9; --card2:#f1e8dc; --ink:#2b2420; --sub:#7a6d63; --line:#e5d9c9;
+  --acc:#d4602a; --acc-ink:#fff; --chip:#fbe3d3; --chip-ink:#a2441a; --ok:#2f7d6d; --ring:#c62f2f;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#1c1815; --card:#27211d; --card2:#322a25; --ink:#f1e9df; --sub:#a99a8c; --line:#3b322b;
+  --acc:#ee8350; --acc-ink:#1c1815; --chip:#4a2e21; --chip-ink:#ffbf9c; --ok:#5fb8a4; --ring:#ff6b6b;
+}}
+html,body{background:var(--bg);color:var(--ink)}
+body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  -webkit-tap-highlight-color:transparent;padding-bottom:calc(var(--barh,0px) + 28px)}
+button,input,textarea{font:inherit;color:inherit}
+button{border:none;background:none;cursor:pointer}
+[hidden]{display:none !important}
+
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;display:flex;align-items:center;gap:8px}
+header h1{flex:1;min-width:0;font-size:19px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{min-width:44px;height:44px;padding:0 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);
+  font-size:15px;font-weight:600;flex:0 0 auto}
+.ib:active,.btn:active{transform:scale(.97)}
+.btn{min-height:50px;border-radius:14px;background:var(--card);border:1px solid var(--line);font-weight:700;padding:0 16px;width:100%}
+.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+main{max-width:640px;margin:0 auto;padding:16px}
+.row{display:flex;gap:10px}
+.sub{color:var(--sub);font-size:14px}
+h2{font-size:15px;color:var(--sub);font-weight:700;margin:22px 0 8px}
+
+/* 목록 */
+.search{width:100%;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--card);padding:0 14px}
+.cards{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.rc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;text-align:left;width:100%}
+.rc b{font-size:18px;display:block}
+.empty{text-align:center;color:var(--sub);padding:40px 0}
+.foot{display:flex;gap:10px;margin-top:28px}
+.foot .btn{min-height:44px;font-size:14px;font-weight:600}
+
+/* 고치기 */
+label{display:block;font-weight:700;margin:16px 0 6px}
+label small{font-weight:400;color:var(--sub)}
+.in,textarea{width:100%;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px}
+.in{height:46px}
+textarea{min-height:140px;resize:vertical;line-height:1.55}
+.found{font-size:14px;color:var(--sub);margin-top:6px}
+.found span{display:inline-block;background:var(--chip);color:var(--chip-ink);border-radius:8px;padding:0 7px;margin:2px 3px 0 0}
+
+/* 요리하기 */
+.memo{background:var(--card2);border-radius:12px;padding:10px 14px;font-size:15px;white-space:pre-wrap}
+.ings{display:flex;flex-wrap:wrap;gap:8px}
+.ing{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:15px;text-align:left}
+.ing.got{opacity:.45;text-decoration:line-through}
+.ing.head{background:none;border:none;padding:6px 2px 0;font-weight:700;color:var(--sub);width:100%}
+.steps{display:flex;flex-direction:column;gap:10px}
+.st{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 14px 14px 12px;display:flex;gap:12px;cursor:pointer}
+.st .n{flex:0 0 30px;height:30px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+.st .tx{flex:1;font-size:17px;line-height:1.7}
+.st.done{opacity:.5}
+.st.done .n{background:var(--ok);color:#fff}
+.st.done .tx{text-decoration:line-through}
+.tc{display:inline-flex;align-items:center;gap:3px;background:var(--chip);color:var(--chip-ink);font-weight:800;
+  border-radius:10px;padding:2px 10px;margin:0 2px;min-height:34px;font-size:16px}
+.tc.on{background:var(--acc);color:var(--acc-ink)}
+.tip{font-size:13px;color:var(--sub);margin-top:14px;text-align:center}
+
+/* 타이머 줄 */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--card);border-top:1px solid var(--line);
+  padding:8px 12px calc(env(safe-area-inset-bottom) + 8px);box-shadow:0 -6px 20px rgba(0,0,0,.08)}
+#bar .in2{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:6px}
+.tm{display:flex;align-items:center;gap:8px}
+.tm .lb{flex:1;min-width:0;font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm .lb b{display:block;font-size:24px;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2}
+.tm.paused .lb b{opacity:.45}
+.tm .ib{height:42px;min-width:48px;padding:0 10px}
+.tm.ringing{background:var(--ring);color:#fff;border-radius:12px;padding:6px 8px;animation:pulse 1s infinite}
+.tm.ringing .lb,.tm.ringing .lb b{color:#fff}
+.tm.ringing .ib{background:#fff;color:var(--ring);border:none;font-weight:800}
+@keyframes pulse{50%{opacity:.75}}
+
+/* 덮개 */
+.veil{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:640px;border-radius:20px 20px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:90vh;overflow:auto}
+.sheet h3{font-size:19px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.sheet textarea{min-height:180px;font-size:13px}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translateX(-50%);z-index:30;
+  background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="ib" id="back" hidden aria-label="뒤로">←</button>
+  <h1 id="title">부엌 노트</h1>
+  <button class="ib" id="hEdit" hidden>고치기</button>
+  <button class="ib" id="hTimer">+ ⏱</button>
+</header>
+
+<main>
+  <!-- 목록 -->
+  <section id="sList">
+    <input class="search" id="q" type="search" placeholder="요리·재료 찾기">
+    <div class="cards" id="cards"></div>
+    <div style="margin-top:14px"><button class="btn pri" id="add">+ 새 레시피</button></div>
+    <div class="foot">
+      <button class="btn" id="exp">백업 내보내기</button>
+      <button class="btn" id="imp">백업 가져오기</button>
+    </div>
+    <p class="tip">레시피는 이 폰 안에만 저장돼요. 폰을 바꾸거나 브라우저 데이터를 지우기 전에 백업을 내보내 두세요.</p>
+  </section>
+
+  <!-- 고치기 -->
+  <section id="sEdit" hidden>
+    <button class="btn" id="pasteAll">📋 레시피 글 통째로 붙여넣기</button>
+    <label>이름</label>
+    <input class="in" id="eName" placeholder="예: 된장찌개">
+    <label>재료 <small>· 한 줄에 하나</small></label>
+    <textarea id="eIngs" placeholder="돼지고기 앞다리 1kg&#10;대파 1대&#10;[양념]&#10;된장 2큰술"></textarea>
+    <label>순서 <small>· 한 줄에 한 단계. 「10분」「1분 30초」라고 쓰면 타이머가 붙어요</small></label>
+    <textarea id="eSteps" style="min-height:220px" placeholder="물이 끓으면 고기를 넣고 10분 끓인다&#10;중약불로 줄여 40분 삶는다"></textarea>
+    <div class="found" id="eFound"></div>
+    <label>메모 <small>· 비워도 돼요</small></label>
+    <textarea id="eMemo" style="min-height:70px" placeholder="예: 커피가루 넣으면 잡내가 덜하다"></textarea>
+    <div class="row" style="margin-top:20px">
+      <button class="btn" id="eDel">지우기</button>
+      <button class="btn pri" id="eSave">저장</button>
+    </div>
+  </section>
+
+  <!-- 요리하기 -->
+  <section id="sCook" hidden>
+    <div class="memo" id="cMemo" hidden></div>
+    <h2>재료 <span class="sub" style="font-weight:400">· 챙긴 건 눌러서 지우기</span></h2>
+    <div class="ings" id="cIngs"></div>
+    <h2>순서 <span class="sub" style="font-weight:400">· 끝낸 단계는 눌러서 표시</span></h2>
+    <div class="steps" id="cSteps"></div>
+    <p class="tip">요리하는 동안 화면이 꺼지지 않게 해 둬요. ⏱ 를 누르면 타이머가 아래에 생깁니다.</p>
+    <div style="margin-top:14px"><button class="btn" id="cReset">체크 전부 지우기</button></div>
+  </section>
+</main>
+
+<div id="bar" hidden><div class="in2" id="barIn"></div></div>
+
+<script>
+/* ---------- 저장 (사파리 프라이빗에선 읽기만 해도 예외가 난다) ---------- */
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+const SAMPLES=[
+ {id:'suyuk',name:'수육',memo:'앞다리는 담백하고 통삼겹은 부드럽다. 커피가루를 넣으면 잡내가 덜하다.',
+  ings:['돼지고기 앞다리 또는 통삼겹 1kg','된장 2큰술','양파 1개','대파 1대','통마늘 10쪽','생강 1톨','통후추 1큰술','월계수잎 3장','소주 또는 맛술 1/2컵','인스턴트 커피가루 1작은술 (선택)'],
+  steps:['고기를 찬물에 30분 담가 핏물을 뺀다','냄비에 고기가 잠길 만큼 물을 붓고 된장을 풀어 양파·대파·마늘·생강·통후추·월계수잎·커피가루를 넣고 센 불로 끓인다','물이 끓으면 고기와 소주를 넣고 센 불로 10분 끓인다','중약불로 줄이고 뚜껑을 덮어 40분 삶는다. 젓가락이 쑥 들어가면 다 된 것','불을 끄고 뚜껑을 덮은 채 10분 뜸 들인다','건져서 5분 식힌 뒤 결 반대로 얇게 썬다']},
+ {id:'jangkal',name:'장칼국수',memo:'2인분. 생면은 겉 밀가루를 털어야 국물이 덜 걸쭉해진다.',
+  ings:['칼국수 생면 2인분','물 1.2L','국물용 멸치 15마리','다시마 1장 (10cm)','[양념]','고추장 1.5큰술','된장 1큰술','고춧가루 1큰술','국간장 1큰술','다진 마늘 1큰술','[건더기]','감자 1개','애호박 1/3개','양파 1/2개','대파 1/2대','청양고추 1개','달걀 1개 (선택)'],
+  steps:['마른 냄비에 멸치를 넣고 1분 볶아 비린내를 날린다','물과 다시마를 넣고 끓기 시작하면 다시마를 건진 뒤 10분 더 끓이고 멸치를 건진다','고추장·된장을 체에 걸러 풀고 감자를 넣어 5분 끓인다','면의 밀가루를 털어 넣고 붙지 않게 저어 가며 5~6분 끓인다','애호박·양파·고춧가루·다진 마늘을 넣고 3분 더 끓인다','국간장으로 간하고 대파·청양고추를 넣은 뒤 달걀을 풀어 두르고 1분 뒤 불을 끈다']},
+ {id:'yeolmu',name:'열무김치',memo:'열무는 많이 만지면 풋내가 난다. 절일 때도 버무릴 때도 살살.',
+  ings:['열무 2단 (약 2kg)','굵은소금 1컵','쪽파 한 줌','홍고추 2개','[풀]','물 3컵','밀가루 또는 찹쌀가루 2큰술','[양념]','고춧가루 1/2컵','다진 마늘 3큰술','다진 생강 1작은술','멸치액젓 4큰술','설탕 1큰술','양파 1/2개 (갈아서)'],
+  steps:['열무는 누런 잎과 뿌리 끝을 다듬어 5cm 길이로 자른다','물에 살살 씻어 굵은소금을 켜켜이 뿌리고 20분 절인 뒤 한 번 뒤집어 20분 더 절인다','절이는 동안 물 3컵에 밀가루를 풀어 저어 가며 5분 끓이고 식힌다','식은 풀에 고춧가루·마늘·생강·액젓·설탕·간 양파를 섞어 10분 불린다','절인 열무를 찬물에 두세 번 헹궈 체에 밭쳐 15분 물기를 뺀다','열무·쪽파·홍고추에 양념을 넣고 살살 버무린다','통에 담아 실온에서 반나절~하루 익힌 뒤 냉장고에 넣는다']}
+];
+
+let recipes=load('ck.recipes',null);
+if(!Array.isArray(recipes)){recipes=SAMPLES;save('ck.recipes',recipes)}
+let timers=load('ck.timers',[]);          // {id,label,total,endAt,left,paused,rang,rid,i,j}
+let prog=load('ck.prog',{});              // rid -> {s:[단계 끝], g:[재료 챙김]}
+
+/* ---------- 시간 찾기: 「10분」「1분 30초」「5~6분(앞 숫자)」「1.5시간」 ---------- */
+const UNIT={'시간':3600,'분':60,'초':1};
+function findTimes(s){
+  const re=/(\d+(?:\.\d+)?)(?:\s*[~∼\-]\s*\d+(?:\.\d+)?)?\s*(시간|분|초)/g, out=[]; let m;
+  while((m=re.exec(s))){
+    const u=UNIT[m[2]], sec=Math.round(parseFloat(m[1])*u), last=out[out.length-1];
+    // 「1분 30초」처럼 큰 단위 바로 뒤에 작은 단위가 오면 하나로 합친다
+    if(last && u<last.u && /^\s*$/.test(s.slice(last.end,m.index))){last.sec+=sec;last.end=re.lastIndex;last.u=u}
+    else out.push({start:m.index,end:re.lastIndex,sec,u});
+  }
+  return out.filter(t=>t.sec>0);
+}
+function fmt(sec){
+  sec=Math.max(0,Math.ceil(sec));
+  const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60,p=n=>String(n).padStart(2,'0');
+  return h?`${h}:${p(m)}:${p(s)}`:`${p(m)}:${p(s)}`;
+}
+function say(sec){
+  const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  return [h&&h+'시간',m&&m+'분',s&&s+'초'].filter(Boolean).join(' ')||'0초';
+}
+const totalOf=r=>r.steps.reduce((a,s)=>a+findTimes(s).reduce((b,t)=>b+t.sec,0),0);
+
+/* ---------- 화면 넘기기 (뒤로가기 버튼은 history 로 받는다) ---------- */
+let cur={s:'list'}, dirty=false;
+function show(st){
+  cur=st;
+  $('#sList').hidden=st.s!=='list'; $('#sEdit').hidden=st.s!=='edit'; $('#sCook').hidden=st.s!=='cook';
+  $('#back').hidden=st.s==='list'; $('#hEdit').hidden=st.s!=='cook';
+  const r=recipes.find(x=>x.id===st.rid);
+  if(st.s==='list'){$('#title').textContent='부엌 노트';drawList()}
+  if(st.s==='edit'){$('#title').textContent=r?r.name+' 고치기':'새 레시피';fillEdit(r)}
+  if(st.s==='cook'){ if(!r){show({s:'list'});return} $('#title').textContent=r.name;drawCook(r)}
+  window.scrollTo(0,0); awake();
+}
+function go(st){history.pushState(st,'');show(st)}
+function back(){history.back()}
+window.addEventListener('popstate',e=>{
+  if(cur.s==='edit'&&dirty&&!confirm('저장하지 않고 나갈까요?')){history.pushState(cur,'');return}
+  dirty=false; show(e.state||{s:'list'});
+});
+
+/* ---------- 목록 ---------- */
+function drawList(){
+  const q=$('#q').value.trim();
+  const list=recipes.filter(r=>!q||r.name.includes(q)||r.ings.some(i=>i.includes(q)));
+  $('#cards').innerHTML=list.length?list.map(r=>{
+    const t=totalOf(r);
+    return `<button class="rc" data-id="${esc(r.id)}"><b>${esc(r.name)}</b>
+      <span class="sub">재료 ${r.ings.filter(i=>!/^\[.*\]$/.test(i)).length} · 단계 ${r.steps.length}${t?' · ⏱ 다 더하면 '+say(t):''}</span></button>`;
+  }).join(''):`<div class="empty">${q?'찾는 레시피가 없어요':'아직 레시피가 없어요'}</div>`;
+}
+$('#q').addEventListener('input',drawList);
+$('#cards').addEventListener('click',e=>{const b=e.target.closest('.rc');if(b)go({s:'cook',rid:b.dataset.id})});
+$('#add').onclick=()=>go({s:'edit'});
+
+/* ---------- 고치기 ---------- */
+const lines=s=>s.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+function fillEdit(r){
+  $('#eName').value=r?r.name:''; $('#eIngs').value=r?r.ings.join('\n'):'';
+  $('#eSteps').value=r?r.steps.join('\n'):''; $('#eMemo').value=r?(r.memo||''):'';
+  $('#eDel').hidden=!r; dirty=false; drawFound();
+}
+function drawFound(){
+  const st=lines($('#eSteps').value), parts=[];
+  st.forEach((s,i)=>findTimes(s).forEach(t=>parts.push(`<span>${i+1}단계 ${say(t.sec)}</span>`)));
+  $('#eFound').innerHTML=parts.length?'타이머: '+parts.join(''):(st.length?'시간이 적힌 단계가 없어요':'');
+}
+['#eName','#eIngs','#eSteps','#eMemo'].forEach(id=>$(id).addEventListener('input',()=>{dirty=true;if(id==='#eSteps')drawFound()}));
+$('#eSave').onclick=()=>{
+  const name=$('#eName').value.trim();
+  if(!name){toast('이름을 적어 주세요');$('#eName').focus();return}
+  const data={name,ings:lines($('#eIngs').value),steps:lines($('#eSteps').value),memo:$('#eMemo').value.trim()};
+  let r=recipes.find(x=>x.id===cur.rid);
+  if(r) Object.assign(r,data); else {r={id:uid(),...data};recipes.unshift(r)}
+  if(r.id in prog){delete prog[r.id];save('ck.prog',prog)}   // 단계가 바뀌었을 수 있다
+  if(!save('ck.recipes',recipes)) toast('이 브라우저에선 저장이 안 돼요 (프라이빗 창?)'); else toast('저장했어요');
+  dirty=false;
+  // 있던 것을 고쳤으면 요리 화면에서 왔으니 그리로 돌아가고, 새 것이면 이 자리를 요리 화면으로 바꾼다
+  if(cur.rid) back(); else {history.replaceState({s:'cook',rid:r.id},''); show({s:'cook',rid:r.id})}
+};
+$('#eDel').onclick=()=>{
+  const r=recipes.find(x=>x.id===cur.rid); if(!r||!confirm(`「${r.name}」을 지울까요?`))return;
+  recipes=recipes.filter(x=>x!==r); save('ck.recipes',recipes); dirty=false;
+  history.go(-2); toast('지웠어요');   // 요리 화면을 건너뛰고 목록으로
+};
+
+/* 붙여넣기 — 블로그·채팅에서 복사한 레시피 글을 재료/순서로 나눈다 */
+function splitPaste(txt){
+  const ls=lines(txt.replace(/\*\*|__|`/g,'')); let mode=null,name='';const ings=[],steps=[],rest=[];
+  const strip=l=>l.replace(/^(#+\s*|[-*•·▪◦]\s*|\d+\s*[.)]\s*|[①-⑳]\s*|step\s*\d+\s*[:.]?\s*|\d+단계\s*[:.]?\s*)/i,'').trim();
+  for(const raw of ls){
+    const h=raw.replace(/[#\[\]【】<>():：\s\d.]/g,'');
+    if(h.length<=10&&/^(재료|준비물|주재료)/.test(h)){mode='i';continue}
+    if(h.length<=10&&/(양념|소스|육수|풀|드레싱)/.test(h)&&!/[0-9]/.test(raw.slice(0,3))&&mode==='i'&&!/큰술|작은술|컵|g|ml/.test(raw)){ings.push('['+h+']');continue}
+    if(h.length<=12&&/^(만드는법|만들기|조리법|조리순서|조리방법|순서|방법|레시피)/.test(h)){mode='s';continue}
+    const l=strip(raw); if(!l)continue;
+    if(mode==='i')ings.push(l); else if(mode==='s')steps.push(l);
+    else if(!name&&l.length<=20)name=l.replace(/\s*레시피$/,''); else rest.push(l);
+  }
+  if(!ings.length&&!steps.length) return {name,ings:[],steps:rest};
+  return {name,ings,steps,memo:mode?'':rest.join('\n')};
+}
+$('#pasteAll').onclick=()=>sheet(`<h3>레시피 글 붙여넣기</h3>
+  <p class="sub">「재료」「만드는 법」 같은 제목이 있으면 알아서 나눠요. 넣은 뒤 고쳐서 저장하면 돼요.</p>
+  <textarea id="pv" placeholder="여기에 붙여넣기" style="margin-top:10px"></textarea>
+  <div class="row" style="margin-top:12px"><button class="btn" data-x>닫기</button><button class="btn pri" id="pvGo">나눠 넣기</button></div>`,
+  el=>{el.querySelector('#pvGo').onclick=()=>{
+    const p=splitPaste(el.querySelector('#pv').value);
+    if(p.name&&!$('#eName').value.trim())$('#eName').value=p.name;
+    if(p.ings.length)$('#eIngs').value=p.ings.join('\n');
+    if(p.steps.length)$('#eSteps').value=p.steps.join('\n');
+    if(p.memo&&!$('#eMemo').value.trim())$('#eMemo').value=p.memo;
+    dirty=true; drawFound(); closeSheet();
+    toast(`재료 ${p.ings.length}줄 · 순서 ${p.steps.length}단계`);
+  }});
+
+/* ---------- 요리하기 ---------- */
+function drawCook(r){
+  const p=prog[r.id]||{s:[],g:[]};
+  $('#cMemo').hidden=!r.memo; $('#cMemo').textContent=r.memo||'';
+  $('#cIngs').innerHTML=r.ings.map((x,i)=>/^\[.*\]$/.test(x)
+    ?`<div class="ing head">${esc(x.slice(1,-1))}</div>`
+    :`<button class="ing${p.g.includes(i)?' got':''}" data-g="${i}">${esc(x)}</button>`).join('')||'<span class="sub">적힌 재료가 없어요</span>';
+  $('#cSteps').innerHTML=r.steps.map((s,i)=>{
+    let html='',at=0;
+    findTimes(s).forEach((t,j)=>{
+      const on=timers.some(x=>x.rid===r.id&&x.i===i&&x.j===j);
+      html+=esc(s.slice(at,t.start))+`<button class="tc${on?' on':''}" data-i="${i}" data-j="${j}">⏱ ${esc(s.slice(t.start,t.end))}</button>`;
+      at=t.end;
+    });
+    html+=esc(s.slice(at));
+    return `<div class="st${p.s.includes(i)?' done':''}" data-s="${i}"><div class="n">${i+1}</div><div class="tx">${html}</div></div>`;
+  }).join('')||'<span class="sub">적힌 순서가 없어요</span>';
+}
+function mark(kind,i){
+  const p=prog[cur.rid]||(prog[cur.rid]={s:[],g:[]});
+  p[kind]=p[kind].includes(i)?p[kind].filter(x=>x!==i):[...p[kind],i];
+  save('ck.prog',prog); drawCook(recipes.find(x=>x.id===cur.rid));
+}
+$('#cIngs').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(b)mark('g',+b.dataset.g)});
+$('#cSteps').addEventListener('click',e=>{
+  const c=e.target.closest('.tc');
+  if(c){
+    const r=recipes.find(x=>x.id===cur.rid), i=+c.dataset.i, j=+c.dataset.j, t=findTimes(r.steps[i])[j];
+    const has=timers.find(x=>x.rid===r.id&&x.i===i&&x.j===j);
+    if(has){toast('이미 재고 있어요 — 아래 타이머');return}
+    addTimer(`${r.name} ${i+1}단계 · ${say(t.sec)}`,t.sec,{rid:r.id,i,j});
+    drawCook(r); return;
+  }
+  const s=e.target.closest('.st'); if(s)mark('s',+s.dataset.s);
+});
+$('#cReset').onclick=()=>{delete prog[cur.rid];save('ck.prog',prog);drawCook(recipes.find(x=>x.id===cur.rid))};
+$('#hEdit').onclick=()=>go({s:'edit',rid:cur.rid});
+$('#back').onclick=back;
+
+/* ---------- 타이머 — 끝나는 시각을 적어 두므로 화면을 껐다 켜도, 새로고침해도 맞다 ---------- */
+function addTimer(label,sec,extra){
+  unlockAudio();
+  timers.push({id:uid(),label,total:sec,endAt:Date.now()+sec*1000,paused:false,rang:false,...(extra||{})});
+  save('ck.timers',timers); barKey=''; tick(); awake();
+}
+function dropTimer(id){
+  timers=timers.filter(t=>t.id!==id); save('ck.timers',timers); barKey=''; tick(); awake();
+  if(cur.s==='cook')drawCook(recipes.find(x=>x.id===cur.rid));
+}
+const leftOf=t=>t.paused?t.left:(t.endAt-Date.now())/1000;
+
+let barKey='';
+function drawBar(){
+  const key=timers.map(t=>t.id+(t.paused?'p':'')+(t.rang?'r':'')).join();
+  if(key!==barKey){
+    barKey=key;
+    $('#bar').hidden=!timers.length;
+    $('#barIn').innerHTML=timers.map(t=>t.rang
+      ?`<div class="tm ringing" data-id="${t.id}"><div class="lb">${esc(t.label)}<b>다 됐어요!</b></div><button class="ib" data-a="off">끄기</button></div>`
+      :`<div class="tm${t.paused?' paused':''}" data-id="${t.id}"><div class="lb">${esc(t.label)}<b data-left></b></div>
+        <button class="ib" data-a="plus">+1분</button><button class="ib" data-a="pause">${t.paused?'▶':'⏸'}</button><button class="ib" data-a="x" aria-label="지우기">✕</button></div>`).join('');
+    document.body.style.setProperty('--barh',(timers.length?$('#bar').offsetHeight:0)+'px');
+  }
+  timers.forEach(t=>{const b=document.querySelector(`.tm[data-id="${t.id}"] [data-left]`);if(b)b.textContent=fmt(leftOf(t))});
+}
+$('#barIn').addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]'); if(!b)return;
+  const t=timers.find(x=>x.id===b.closest('.tm').dataset.id); if(!t)return;
+  const a=b.dataset.a;
+  if(a==='off'||a==='x'){ if(a==='x'&&!confirm('이 타이머를 지울까요?'))return; dropTimer(t.id); return }
+  if(a==='plus'){ if(t.paused)t.left+=60; else t.endAt+=60000; }
+  if(a==='pause'){ if(t.paused){t.endAt=Date.now()+t.left*1000;t.paused=false} else {t.left=leftOf(t);t.paused=true} }
+  save('ck.timers',timers); barKey=''; tick(); awake();
+});
+
+let lastBeep=0;
+function tick(){
+  const now=Date.now(); let changed=false;
+  timers.forEach(t=>{if(!t.paused&&!t.rang&&t.endAt<=now){t.rang=true;changed=true}});
+  if(changed)save('ck.timers',timers);
+  const ringing=timers.some(t=>t.rang);
+  if(ringing&&now-lastBeep>1300){lastBeep=now;beep();try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(e){}}
+  document.title=ringing?'⏰ 다 됐어요!':'부엌 노트';
+  drawBar();
+}
+setInterval(tick,250);
+
+/* 소리 — 브라우저는 한 번 눌러야 소리를 허락한다. 타이머 누를 때 깨워 둔다 */
+let AC=null;
+function unlockAudio(){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+document.addEventListener('pointerdown',unlockAudio,{once:true});
+function beep(){
+  unlockAudio(); if(!AC)return; const t0=AC.currentTime;
+  [0,.2,.4].forEach(d=>{const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=d===.4?1175:880;
+    g.gain.setValueAtTime(.0001,t0+d);g.gain.exponentialRampToValueAtTime(.25,t0+d+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+d+.16);
+    o.connect(g);g.connect(AC.destination);o.start(t0+d);o.stop(t0+d+.18)});
+}
+
+/* 화면 켜 두기 — 요리 화면이거나 타이머가 돌고 있을 때 */
+let wl=null;
+async function awake(){
+  const need=cur.s==='cook'||timers.length>0;
+  try{
+    if(need&&!wl&&'wakeLock' in navigator&&document.visibilityState==='visible'){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}
+    else if(!need&&wl){const w=wl;wl=null;await w.release()}
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){tick();awake()}});
+
+/* 빈 타이머 */
+$('#hTimer').onclick=()=>sheet(`<h3>타이머</h3>
+  <div class="grid">${[1,3,5,7,10,15,20,30,60].map(m=>`<button class="btn" data-m="${m}">${m<60?m+'분':'1시간'}</button>`).join('')}</div>
+  <div class="row"><input class="in" id="tmMin" type="number" inputmode="decimal" min="0" placeholder="직접 (분)"><button class="btn pri" id="tmGo" style="width:auto">시작</button></div>
+  <div style="margin-top:12px"><button class="btn" data-x>닫기</button></div>`,
+  el=>{
+    el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const m=+b.dataset.m;addTimer(`타이머 ${say(m*60)}`,m*60);closeSheet()});
+    el.querySelector('#tmGo').onclick=()=>{const m=parseFloat(el.querySelector('#tmMin').value);
+      if(!(m>0))return; const s=Math.round(m*60); addTimer(`타이머 ${say(s)}`,s); closeSheet()};
+  });
+
+/* ---------- 백업 ---------- */
+$('#exp').onclick=()=>{
+  const txt=JSON.stringify({app:'kitchen-note',v:1,at:new Date().toISOString(),recipes},null,1);
+  sheet(`<h3>백업 내보내기</h3><p class="sub">레시피 ${recipes.length}개. 파일로 받거나, 복사해서 카톡 나에게 보내기로 보관하세요.</p>
+    <textarea readonly style="margin-top:10px">${esc(txt)}</textarea>
+    <div class="row" style="margin-top:12px"><button class="btn" id="cp">복사</button><button class="btn pri" id="dl">파일로 받기</button></div>
+    <div style="margin-top:10px"><button class="btn" data-x>닫기</button></div>`,el=>{
+    el.querySelector('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(txt);toast('복사했어요')}catch(e){el.querySelector('textarea').select();toast('길게 눌러 복사하세요')}};
+    el.querySelector('#dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));
+      a.download=`부엌노트-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove()};
+  });
+};
+$('#imp').onclick=()=>sheet(`<h3>백업 가져오기</h3><p class="sub">같은 레시피는 백업 것으로 바뀌고, 없던 건 더해져요. 지금 있는 건 지우지 않아요.</p>
+  <input type="file" id="fi" accept=".json,application/json,text/plain" style="margin-top:10px">
+  <textarea id="ft" placeholder="또는 백업 글을 여기에 붙여넣기" style="margin-top:10px"></textarea>
+  <div class="row" style="margin-top:12px"><button class="btn" data-x>닫기</button><button class="btn pri" id="fg">가져오기</button></div>`,el=>{
+  el.querySelector('#fi').onchange=async e=>{const f=e.target.files[0];if(f)el.querySelector('#ft').value=await f.text()};
+  el.querySelector('#fg').onclick=()=>{
+    let d; try{d=JSON.parse(el.querySelector('#ft').value)}catch(e){toast('백업 글이 아니에요');return}
+    const list=Array.isArray(d)?d:d&&d.recipes;
+    if(!Array.isArray(list)){toast('레시피가 안 보여요');return}
+    let n=0;
+    list.forEach(x=>{ if(!x||!x.name)return;
+      const r={id:String(x.id||uid()),name:String(x.name),ings:(x.ings||[]).map(String),steps:(x.steps||[]).map(String),memo:String(x.memo||'')};
+      const k=recipes.findIndex(y=>y.id===r.id); if(k>=0)recipes[k]=r; else recipes.push(r); n++; });
+    save('ck.recipes',recipes); closeSheet(); drawList(); toast(`${n}개 가져왔어요`);
+  };
+});
+
+/* ---------- 덮개·알림 ---------- */
+let sheetEl=null;
+function sheet(html,bind){
+  closeSheet(); sheetEl=document.createElement('div'); sheetEl.className='veil';
+  sheetEl.innerHTML=`<div class="sheet">${html}</div>`;
+  sheetEl.addEventListener('click',e=>{if(e.target===sheetEl||e.target.closest('[data-x]'))closeSheet()});
+  document.body.appendChild(sheetEl); bind&&bind(sheetEl);
+}
+function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null}}
+let toastT;
+function toast(m){let t=$('.toast');if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t)}
+  t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,1800)}
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+
+/* 새로고침하면 목록에서 시작 */
+history.replaceState({s:'list'},'',location.pathname);
+show({s:'list'}); tick();
+</script>
+</body>
+</html>
