@@ -172,8 +172,14 @@ const SAMPLES=[
   steps:['열무는 누런 잎과 뿌리 끝을 다듬어 5cm 길이로 자른다','물에 살살 씻어 굵은소금을 켜켜이 뿌리고 20분 절인 뒤 한 번 뒤집어 20분 더 절인다','절이는 동안 물 3컵에 밀가루를 풀어 저어 가며 5분 끓이고 식힌다','식은 풀에 고춧가루·마늘·생강·액젓·설탕·간 양파를 섞어 10분 불린다','절인 열무를 찬물에 두세 번 헹궈 체에 밭쳐 15분 물기를 뺀다','열무·쪽파·홍고추에 양념을 넣고 살살 버무린다','통에 담아 실온에서 반나절~하루 익힌 뒤 냉장고에 넣는다']}
 ];
 
+/* 나중에 더한 레시피. 앱을 열 때 한 번씩만 넣는다(지운 건 다시 안 살린다). 새로 더하려면 여기에 id 가 다른 걸 추가. */
+const ADDS=[{"id":"fishcutlet-sauce","name":"생선까스 소스 (타르타르)","memo":"생선까스 2~3장 분량. 양파 물기를 꼭 짜야 소스가 안 묽어진다. 하루 묵으면 맛이 더 어울린다. 냉장 3일.","ings":["마요네즈 5큰술","[다지는 것]","양파 1/4개 (작은 것)","오이피클 또는 할라피뇨 2큰술","삶은 달걀 1개","[맛내기]","홀그레인 머스터드 또는 연겨자 1작은술","레몬즙 1큰술 (식초 1/2큰술도 가능)","설탕 1/2작은술","소금·후추 약간","다진 파슬리 약간 (선택)"],"steps":["양파를 잘게 다져 찬물에 10분 담가 매운맛을 뺀다","달걀은 삶아 껍질을 벗기고 포크로 굵게 으깬다. 피클은 잘게 다진다","양파를 면포나 키친타월로 물기가 안 나오게 꼭 짠다","볼에 마요네즈·으깬 달걀·양파·피클·머스터드·레몬즙·설탕을 넣고 섞는다","소금·후추로 간을 맞춘다. 싱거우면 피클 국물 1작은술을 더한다","냉장고에서 20분 숙성한 뒤 갓 튀긴 생선까스에 곁들인다"]}];
+
 let recipes=load('ck.recipes',null);
 if(!Array.isArray(recipes)){recipes=SAMPLES;save('ck.recipes',recipes)}
+{const seen=load('ck.added',[]);let ch=false;
+ ADDS.forEach(a=>{if(!seen.includes(a.id)){if(!recipes.some(r=>r.id===a.id))recipes.push(a);seen.push(a.id);ch=true}});
+ if(ch){save('ck.recipes',recipes);save('ck.added',seen)}}
 let timers=load('ck.timers',[]);          // {id,label,total,endAt,left,paused,rang,rid,i,j}
 let prog=load('ck.prog',{});              // rid -> {s:[단계 끝], g:[재료 챙김]}
 
